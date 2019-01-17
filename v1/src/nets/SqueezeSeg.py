@@ -63,7 +63,6 @@ class FireDeconv( nn.Module ):
         x = self.deconv(x)
         return torch.cat( [self.ex1x1(x), self.ex3x3(x)], 1)
 
-
 class SqueezeSeg( nn.Module ):
     # __init__(引数)　後で考える drop率とかかな
     def __init__(self):
@@ -118,9 +117,6 @@ class SqueezeSeg( nn.Module ):
         out = self.fire12(out) + out_c1
         out = self.drop( self.fire13(out) + self.conv1_skip(x) )
         out = self.conv14(out)
-
-
-
         
         
 
