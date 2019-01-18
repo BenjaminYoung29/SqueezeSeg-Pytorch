@@ -115,7 +115,7 @@ def condensing_matrix(size_z, size_a, in_channel):
     nbr2ch_mat = np.concatenate(
         [nbr2ch_mat[:, :, :, :in_channel*half_filter_dim],
          nbr2ch_mat[:, :, :, in_channel*(half_filter_dim+1):]],
-        axis = 3
+        axis = 1
     )
 
     assert nbr2ch_mat.shape == (size_z, size_a, in_channel, (size_a*size_z-1)*in_channel), \
