@@ -6,7 +6,7 @@ import torch.nn.functional as F
 
 from utils import util
 
-class BilateralFilter( nn.Module ):i
+class BilateralFilter( nn.Module ):
     """ Computing pairwise energy with a bilateral filter for CRF
 
     Args:
