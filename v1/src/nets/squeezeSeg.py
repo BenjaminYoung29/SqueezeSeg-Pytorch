@@ -5,6 +5,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from bilateral_filter import BilateralFilter
+from recurrent_crf import RecurrentCRF
 
 class Conv( nn.Module ):
     def __init__( self, inputs, outputs, kernel_size=3, stride=1, padding=0 ):
@@ -67,8 +68,11 @@ class FireDeconv( nn.Module ):
 
 class SqueezeSeg( nn.Module ):
     # __init__(引数)　後で考える drop率とかかな
-    def __init__(self):
+    def __init__(self, mc):
         super(SqueezeSeg, self).__init__()
+        
+        # config
+        self.mc = mc
 
         # encoder
         self.conv1 = Conv(5, 64, 3, 2, 0)
@@ -100,7 +104,9 @@ class SqueezeSeg( nn.Module ):
         # reluを適用させない
         self.conv14 = nn.Conv2d(64, 3, kernel_size=3, stride=1, padding=1)
 
-        self.bf = BilateralFilter(sizes=[3, 5], stride=1, padding=0)
+        self.bf = BilateralFilter(mc, stride=1, padding=0)
+
+        self.rc = RecurrentCRF(mc, stride=1, padding=0)
 
     def forward(self, x):
         # encoder
@@ -122,6 +128,10 @@ class SqueezeSeg( nn.Module ):
         out = self.drop( self.fire13(out) + self.conv1_skip(x) )
         out = self.conv14(out)
         
-        out = self.bf(out)
+        bf_w = self.bf(x[:, :, :, :3])
+
+        out = self.rc(out, bf_w)
+
+        return out
 
 

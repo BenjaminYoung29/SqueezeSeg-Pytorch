@@ -15,17 +15,19 @@ class BilateralFilter( nn.Module ):
         padding: padding
     """
 
-    def __init__( self, sizes=[3, 5], stride=1, padding=0):
-        # self.theta_a, self.theta_r = thetas
-        self.size_z, self.size_a = sizes
-        self.pad_z, self.pad_a = self.size_z//2, self.size_a//2
+    def __init__( self, mc, stride=1, padding=0):
+        
+        self.mc = mc
         self.stride = stride
         self.padding = padding
 
     def forward( self, x ):
+        mc = self.mc
+        
         batch, zenith, azimuth, in_channel = list(x.size())
+        size_z, size_a = mc.LCN_HEIGHT, mc.LCN_WIDTH
 
-        condensing_kernel = util.condensing_matrix(self.size_z, self.size_a, in_channel)
+        condensing_kernel = util.condensing_matrix(size_z, size_a, in_channel)
 
         condensed_input = F.conv2d(x, filter=condensing_kernel, stride=self.stride, padding=self.padding)
 
@@ -42,9 +44,8 @@ class BilateralFilter( nn.Module ):
 
         # NUM_CLASSやBILATERAL_THETA_A,BILATERAL_THETA_Rはあとでconfigの設定とかでなんとかする
         # configparserを用いるといい
-        for cls in range(NUM_CLASS):
-            theta_a = BILATERAL_THETA_A[cls]
-            theta_r = BILATERAL_THETA_R[cls]
+        for cls in range(mc.NUM_CLASS):
+            theta_r = mc.BILATERAL_THETA_R[cls]
             bi_filter = torch.exp( - (diff_x**2 + diff_y**2 + diff_z**2) / 2 / theta_r**2 )
             bi_filters.append(bi_filter)
 
