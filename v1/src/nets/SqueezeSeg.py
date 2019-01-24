@@ -4,6 +4,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from bilateral_filter import BilateralFilter
+
 class Conv( nn.Module ):
     def __init__( self, inputs, outputs, kernel_size=3, stride=1, padding=0 ):
         super(Conv, self).__init__()
@@ -98,6 +100,8 @@ class SqueezeSeg( nn.Module ):
         # reluを適用させない
         self.conv14 = nn.Conv2d(64, 3, kernel_size=3, stride=1, padding=1)
 
+        self.bf = BilateralFilter(sizes=[3, 5], stride=1, padding=0)
+
     def forward(self, x):
         # encoder
         out_c1 = self.conv1(x)
@@ -118,12 +122,6 @@ class SqueezeSeg( nn.Module ):
         out = self.drop( self.fire13(out) + self.conv1_skip(x) )
         out = self.conv14(out)
         
-        
-
-
-
-
-
-
+        out = self.bf(out)
 
 
