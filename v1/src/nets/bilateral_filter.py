@@ -23,7 +23,7 @@ class BilateralFilter( nn.Module ):
         self.padding = padding
 
     def forward( self, x ):
-        batch, zenith, azimuth, in_channel = x.shape.as_list()
+        batch, zenith, azimuth, in_channel = list(x.size())
 
         condensing_kernel = util.condensing_matrix(self.size_z, self.size_a, in_channel)
 
