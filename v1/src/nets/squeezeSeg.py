@@ -41,7 +41,7 @@ class Fire( nn.Module ):
         self.ex3x3 = Conv(o_sq1x1, o_ex3x3, kernel_size=3, stride=1, padding=1)
     
     def forward(self,x):
-        return torch.cat([self.ex1x1( self.sq1x1(x) ), self.ex3x3( self.sq1x1(x) )], 1)
+        return torch.cat([self.ex1x1( self.sq1x1(x) ), self.ex3x3( self.sq1x1(x) )], 3)
 
 
 class Deconv( nn.Module ):
@@ -64,7 +64,7 @@ class FireDeconv( nn.Module ):
     def forward(self,x):
         x = self.sq1x1(x)
         x = self.deconv(x)
-        return torch.cat( [self.ex1x1(x), self.ex3x3(x)], 1)
+        return torch.cat( [self.ex1x1(x), self.ex3x3(x)], 3)
 
 class SqueezeSeg( nn.Module ):
     # __init__(引数)　後で考える drop率とかかな

@@ -15,9 +15,8 @@ class RecurrentCRF( nn.Module ):
 
         # model parameter
         self.model_params = []
-        # ここもあとでparameterで変える
-        self.lider_mask = torch.zeros([mc.BATCH_SIZE, mc.ZENITH_LEVEL, mc.AZIMUTH_LEVEL, 1],dtype=torch.float32)
-    
+
+        # Data周りで実装
     def locally_connected_layer(self, inputs, bilateral_filters, angular_filters, bi_angular_filters, condensing_kernel):
         # "LIDAR MASK"のところはあとで考える
 
