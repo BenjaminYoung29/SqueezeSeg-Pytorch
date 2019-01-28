@@ -41,7 +41,7 @@ class Fire( nn.Module ):
         self.ex3x3 = Conv(o_sq1x1, o_ex3x3, kernel_size=3, stride=1, padding=1)
     
     def forward(self,x):
-        return torch.cat([self.ex1x1( self.sq1x1(x) ), self.ex3x3( self.sq1x1(x) )], 3)
+        return torch.cat([self.ex1x1( self.sq1x1(x) ), self.ex3x3( self.sq1x1(x) )], 1)
 
 
 class Deconv( nn.Module ):
@@ -68,11 +68,12 @@ class FireDeconv( nn.Module ):
 
 class SqueezeSeg( nn.Module ):
     # __init__(引数)　後で考える drop率とかかな
-    def __init__(self, mc):
+    def __init__(self, mc, lidar_mask):
         super(SqueezeSeg, self).__init__()
         
         # config
         self.mc = mc
+        self.lidar_mask = lidar_mask
 
         # encoder
         self.conv1 = Conv(5, 64, 3, 2, 0)
@@ -100,13 +101,12 @@ class SqueezeSeg( nn.Module ):
         
         self.drop = nn.Dropout2d()
 
-        # conv14の出力チャンネル数はクラス数なので、あとで変更
         # reluを適用させない
-        self.conv14 = nn.Conv2d(64, 3, kernel_size=3, stride=1, padding=1)
+        self.conv14 = nn.Conv2d(64, mc.NUM_CLASS, kernel_size=3, stride=1, padding=1)
 
         self.bf = BilateralFilter(mc, stride=1, padding=0)
 
-        self.rc = RecurrentCRF(mc, stride=1, padding=0)
+        self.rc = RecurrentCRF(mc, self.lidar_mask, stride=1, padding=0)
 
     def forward(self, x):
         # encoder
@@ -128,7 +128,7 @@ class SqueezeSeg( nn.Module ):
         out = self.drop( self.fire13(out) + self.conv1_skip(x) )
         out = self.conv14(out)
         
-        bf_w = self.bf(x[:, :, :, :3])
+        bf_w = self.bf(x[:, :3, :, :])
 
         out = self.rc(out, bf_w)
 

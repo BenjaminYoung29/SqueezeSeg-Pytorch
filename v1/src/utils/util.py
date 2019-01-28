@@ -94,7 +94,7 @@ def evaluate_iou(label, pred, n_class, epsilon=1e-12):
 
     return ious, tps, fps, fns
 
-def condensing_matrix(size_z, size_a, in_channel):
+def condensing_matrix(in_channel, size_z, size_a):
     assert size_z % 2 == 1 and size_a % 2==1, \
         'size_z and size_a should be odd number'
 
@@ -102,28 +102,28 @@ def condensing_matrix(size_z, size_a, in_channel):
 
     # moving neigboring pixels to channel dimension
     nbr2ch_mat = np.zeros(
-        (size_z, size_a, in_channel, size_z*size_a*in_channel),
+        (size_z*size_a*in_channel, in_channel, size_z, size_a),
         dtype = np.float32
     )
 
     for z in range(size_z):
         for a in range(size_a):
             for ch in range(in_channel):
-                nbr2ch_mat[z, a, ch, z*(size_a*in_channel) + a*in_channel + ch] = 1
+                nbr2ch_mat[z*(size_a*in_channel) + a*in_channel + ch, ch, z, a] = 1
 
     # exclude the channel index corresponding to the center position
     nbr2ch_mat = np.concatenate(
-        [nbr2ch_mat[:, :, :, :in_channel*half_filter_dim],
-         nbr2ch_mat[:, :, :, in_channel*(half_filter_dim+1):]],
-        axis = 3
+        [nbr2ch_mat[:in_channel*half_filter_dim, :, :, :],
+            nbr2ch_mat[in_channel*(half_filter_dim+1):, :, :, :]],
+        axis = 0
     )
 
-    assert nbr2ch_mat.shape == (size_z, size_a, in_channel, (size_a*size_z-1)*in_channel), \
-        'error with the shape of nbr2ch_mat after removing center position'
+    #assert nbr2ch_mat.shape == (size_z, size_a, in_channel, (size_a*size_z-1)*in_channel), \
+    #   'error with the shape of nbr2ch_mat after removing center position'
 
     return nbr2ch_mat
 
-def angular_filter_kernel(size_z, size_a, in_channel, theta_sqs):
+def angular_filter_kernel(in_channel, size_z, size_a, theta_sqs):
     """Compute a gaussian kernel.
     Args:
         size_z: size on the z dimension.
@@ -133,7 +133,7 @@ def angular_filter_kernel(size_z, size_a, in_channel, theta_sqs):
             gaussian kernel for each channel.
         
     Returns:
-        kernel: ND array of size [size_z, size_a, in_channel, in_channel], which is
+        kernel: ND array of size [in_channel, in_channel, size_z, size_a], which is
             just guassian kernel parameters for each channel.
     """
 
@@ -144,7 +144,7 @@ def angular_filter_kernel(size_z, size_a, in_channel, theta_sqs):
         'length of theta_sqs and in_channel does no match'
 
     # gaussian kernel
-    kernel = np.zeros((size_z, size_a, in_channel, in_channel), dtype=np.float32)
+    kernel = np.zeros((in_channel, in_channel, size_z, size_a), dtype=np.float32)
     for k in range(in_channel):
         kernel_2d = np.zeros((size_z, size_a), dtype=np.float32)
         for i in range(size_z):
@@ -154,7 +154,7 @@ def angular_filter_kernel(size_z, size_a, in_channel, theta_sqs):
 
         # exclude the center position
         kernel_2d[size_z//2, size_a//2] = 0
-        kernel[:, :, k, k] = kernel_2d
+        kernel[k, k, :, :] = kernel_2d
     
     return kernel
 

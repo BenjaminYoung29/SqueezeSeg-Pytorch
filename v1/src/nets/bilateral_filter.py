@@ -24,35 +24,33 @@ class BilateralFilter( nn.Module ):
     def forward( self, x ):
         mc = self.mc
         
-        batch, zenith, azimuth, in_channel = list(x.size())
+        batch, in_channel, zenith, azimuth = list(x.size())
         size_z, size_a = mc.LCN_HEIGHT, mc.LCN_WIDTH
 
-        condensing_kernel = util.condensing_matrix(size_z, size_a, in_channel)
+        condensing_kernel = util.condensing_matrix(in_channel, size_z, size_a)
 
         condensed_input = F.conv2d(x, filter=condensing_kernel, stride=self.stride, padding=self.padding)
 
-        diff_x = x[:, :, :, 0].view(batch, zenith, azimuth, 1) \
-                - condensed_input[:, :, :, 0::in_channel]
+        diff_x = x[:, 0, :, :].view(batch, 1, zenith, azimuth) \
+                - condensed_input[:, 0::in_channel, :, :]
 
-        diff_y = x[:, :, :, 1].view(batch, zenith, azimuth, 1) \
-                - condensed_input[ :, :, :, 1::in_channel]
+        diff_y = x[:, 1, :, :].view(batch, 1, zenith, azimuth) \
+                - condensed_input[ :, 1::in_channel, :, :]
 
-        diff_z = x[:, :, :, 2].view(batch, zenith, azimuth, 1) \
-                - condensed_input[ :, :, :, 2::in_channel]
+        diff_z = x[:, 2, :, :].view(batch, 1, zenith, azimuth) \
+                - condensed_input[ :, 2::in_channel, :, :]
 
         bi_filters = []
 
-        # NUM_CLASSやBILATERAL_THETA_A,BILATERAL_THETA_Rはあとでconfigの設定とかでなんとかする
-        # configparserを用いるといい
         for cls in range(mc.NUM_CLASS):
             theta_r = mc.BILATERAL_THETA_R[cls]
             bi_filter = torch.exp( - (diff_x**2 + diff_y**2 + diff_z**2) / 2 / theta_r**2 )
             bi_filters.append(bi_filter)
 
-        out = torch.stack(bi_filters)
-        out = out.transpose(0,1).transpose(1,2).transpose(2,3).transpose(3,4)
+        bf_weight = torch.stack(bi_filters)
+        bf_weight = bf_weight.transpose(0,1)
 
-        return out
+        return bf_weight
 
 
 

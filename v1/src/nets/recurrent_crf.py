@@ -8,15 +8,12 @@ import torch.nn.functional as F
 from utils import util
 
 class RecurrentCRF( nn.Module ):
-    def __init__( self, mc, stride=1, padding=0):
+    def __init__( self, mc, lidar_mask, stride=1, padding=0):
         self.mc = mc
+        self.lidar_mask = lidar_mask
         self.stride = stride
         self.padding = padding
 
-        # model parameter
-        self.model_params = []
-
-        # Data周りで実装
     def locally_connected_layer(self, inputs, bilateral_filters, angular_filters, bi_angular_filters, condensing_kernel):
         # "LIDAR MASK"のところはあとで考える
 
@@ -25,24 +22,24 @@ class RecurrentCRF( nn.Module ):
         size_z, size_a = mc.LCN_HEIGHT, mc.LCN_WIDTH
         pad_z, pas_a = size_z//2, size_a//2
         half_filter_dim = (size_z*size_a)//2
-        batch, zenith, azimuth, in_channel = list(inputs.size())
+        batch, in_channel, zenith, azimuth = list(inputs.size())
         
         ang_output = F.conv2d(inputs, filter=angular_filters, stride=self.stride, padding=self.padding)
 
         bi_ang_output = F.conv2d(inputs, filter=bi_angular_filters, stride=self.stride, padding=self.padding)
 
         condensed_input = F.conv2d(
-                inputs*"LIDAR_MASK", filter=condensing_kernel, stride=self.stride, padding=self.padding
+                inputs*self.lidar_mask, filter=condensing_kernel, stride=self.stride, padding=self.padding
         )
         condensed_input = condensed_input.view(
-                batch, zenith, azimuth, size_z*size_a-1, in_channel
+                batch, in_channel, size_z * size_a -1, zenith, azimuth
         )
         condensed_input_np = condensed_input.numpy(condensed_input * bilateral_filters)
-        condensed_input = torch.from_numpy(np.sum(condensed_input_np, axis=3))
+        condensed_input = torch.from_numpy(np.sum(condensed_input_np, axis=2))
 
-        bi_output =   condensed_input * "LIDAR_MASK"
+        bi_output = condensed_input * self.lidar_mask
         bi_output *= bi_ang_output
-
+        
         return ang_output, bi_output
 
 
@@ -53,7 +50,7 @@ class RecurrentCRF( nn.Module ):
         compat_kernel_init = torch.from_numpy(
                 np.reshape(
                     np.ones((mc.NUM_CLASS, mc.NUM_CLASS), dtype="float32") - np.identity(mc.NUM_CLASS, dtype="float32"),
-                    [1, 1, mc.NUM_CLASS, mc.NUM_CLASS]
+                    [mc.NUM_CLASS, mc.NUM_CLASS, 1, 1]
                 )
         )
 
@@ -63,18 +60,16 @@ class RecurrentCRF( nn.Module ):
         angular_compat_kernel = compat_kernel_init * mc.ANG_FILTER_COEF
         angular_compat_kernel.requires_grad_()
 
-        self.model_params += [bi_compat_kernal, angular_compat_kernel]
-
         condensing_kernel = torch.from_numpy(
-                util.condensing_matrix(self.sizes[0], self.sizes[1], mc.NUM_CLASS)
+                util.condensing_matrix(mc.NUM_CLASS, self.sizes[0], self.sizes[1])
         )
 
         angular_filters = torch.from_numpy(
-                util.angular_filter_kernel(self.sizes[0], self.sizes[1], mc.NUM_CLASS, mc.ANG_THETA_A**2)
+                util.angular_filter_kernel(mc.NUM_CLASS, self.sizes[0], self.sizes[1], mc.ANG_THETA_A**2)
         )
 
         bi_angular_filters = torch.from_numpy(
-                util.angular_filter_kernel(self.sizes[0], self.sizes[1], mc.NUM_CLASS, mc.BILATERAL_THETA_A**2)
+                util.angular_filter_kernel(mc.NUM_CLASS, self.sizes[0], self.sizes[1], mc.BILATERAL_THETA_A**2)
         )
 
         for it in range(mc.RCRF_ITER):
