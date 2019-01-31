@@ -26,7 +26,7 @@ class KittiDataset(Dataset):
         
         lidar_name = os.path.join(self.root_dir, self.lidar_2d_csv.iloc[idx, 0])
 
-        lidar_data = np.load(lidar_name).astype(np.float32, copy=False)
+        lidar_data = np.load(lidar_name).astype(np.float32)
         
         if mc.DATA_AUGMENTATION:
             if mc.RANDOM_FLIPPING:
