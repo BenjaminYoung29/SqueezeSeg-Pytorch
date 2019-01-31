@@ -5,124 +5,115 @@ import numpy as np
 from easydict import EasyDict as edict
 
 def base_model_config(dataset='KITTI'):
-	assert dataset.upper() == 'KITTI', 'Currently only support KITTI dataset'
+    assert dataset.upper() == 'KITTI', 'Currently only support KITTI dataset'
 
-	cfg = edict()
+    cfg = edict()
 
-	# Dataset used to train/val/test model. now suppoort KITTI
-	cfg.DATASET = dataset.upper()
-	
-	# classes
-	cfg.CLASSES = [
-		'unknown',
-		'car',
-		'van',
-		'truck',
-		'pedestrian',
-		'person_sitting',
-		'cyclist',
-		'tram',
-		'misc'
-	]
+    # Dataset used to train/val/test model. now suppoort KITTI
+    cfg.DATASET = dataset.upper()
 
-	# number of  classes
-	cfg.NUM_CLASS = len(cfg.CLASSES)
+    # classes
+    cfg.CLASSES = [
+        'unknown',
+        'car',
+        'van',
+        'truck',
+        'pedestrian',
+        'person_sitting',
+        'cyclist',
+        'tram',
+        'misc'
+    ]
 
-	# dict from class name to id
-	cfg.CLS_2_ID = dict(zip(cfg.CLASSES,range(len(cfg.CLASSES))))
+    # number of  classes
+    cfg.NUM_CLASS = len(cfg.CLASSES)
 
-	# loss weight for each class
-	cfg.CLS_LOSS_WEIGHT = np.array(
-		[1/20.0, 1.0, 2.0, 3.0,
-		 8.0, 10.0, 8.0, 2.0, 1.0]
-	)
+    # dict from class name to id
+    cfg.CLS_2_ID = dict(zip(cfg.CLASSES,range(len(cfg.CLASSES))))
 
-	# rgb color for each class
-	cfg.CLS_COLOR_MAP = np.array(
-		[[0.00, 0,00, 0.00],
-		 [0.12, 0.56, 0.37],
-		 [0.66, 0.55, 0.71],
-		 [0.58, 0.72, 0.88],
-		 [0.25, 0.51, 0.76],
-		 [0.98, 0.47, 0.73],
-		 [0.40, 0.19, 0.10],
-		 [0.87, 0.19, 0.17],
-		 [0.13, 0.55, 0.63]]
-	)
+    # loss weight for each class
+    cfg.CLS_LOSS_WEIGHT = np.array(
+        [1/20.0, 1.0, 2.0, 3.0,
+         8.0, 10.0, 8.0, 2.0, 1.0]
+    )
 
-	# Probability to keep a node in dropout
-	cfg.KEEP_PROB = 0.5
+    # rgb color for each class
+    cfg.CLS_COLOR_MAP = np.array(
+        [[0.00, 0,00, 0.00],
+         [0.12, 0.56, 0.37],
+         [0.66, 0.55, 0.71],
+         [0.58, 0.72, 0.88],
+         [0.25, 0.51, 0.76],
+         [0.98, 0.47, 0.73],
+         [0.40, 0.19, 0.10],
+         [0.87, 0.19, 0.17],
+         [0.13, 0.55, 0.63]]
+    )
 
-	# image width
-	cfg.IMAGE_WIDTH = 224
+    # Probability to keep a node in dropout
+    cfg.KEEP_PROB = 0.5
 
-	# image height
-	cfg.IMAGE_HEIGHT = 224
+    # image width
+    cfg.IMAGE_WIDTH = 224
 
-	# number of vertical levels
-	cfg.NUM_LEVEL = 10
+    # image height
+    cfg.IMAGE_HEIGHT = 224
 
-	# number of pie sectors of the field of view
-	cfg.NUM_SECTOR = 90
+    # number of vertical levels
+    cfg.NUM_LEVEL = 10
 
-	# maximum distance of a measurment
-	cfg.MAX_DIST = 100.0
+    # number of pie sectors of the field of view
+    cfg.NUM_SECTOR = 90
 
-	# batch size
-	cfg.BATCH_SIZE = 20
+    # maximum distance of a measurment
+    cfg.MAX_DIST = 100.0
 
-	# Pixel mean values (BGR order) as a (1, 1, 3) array. Below is the BGR mean of VGG16
-	cfg.BGR_MEANS = np.array([[[103.939, 116.779, 123.68]]])
-	
-	# Pixel mean values (RGB order) as a (3, 1, 1) array. Below is the BGR mean of VGG16
-	cfg.RGB_MEANS = np.array([[[123.68, 116.779, 103.939]]])
+    # Pixel mean values (BGR order) as a (1, 1, 3) array. Below is the BGR mean of VGG16
+    cfg.BGR_MEANS = np.array([[[103.939, 116.779, 123.68]]])
 
-	# reduce step size after this many steps
-	cfg.DECAY_STEPS = 10000
+    # Pixel mean values (RGB order) as a (3, 1, 1) array. Below is the BGR mean of VGG16
+    cfg.RGB_MEANS = np.array([[[123.68, 116.779, 103.939]]])
 
-	# multiply the learning rate by this factor
-	cfg.LR_DECAY_FACTOR = 0.1
-	
-	# learning rate
-	cfg.LEARNING_RATE = 0.005
+    # reduce step size after this many steps
+    # cfg.DECAY_STEPS = 10000
 
-	# momentum
-	cfg.MOMENTUM = 0.9
+    # multiply the learning rate by this factor
+    # cfg.LR_DECAY_FACTOR = 0.1
 
-	# weight decay
-	cfg.WEIGHT_DECAY = 0.0005
+    # weight decay
+    cfg.WEIGHT_DECAY = 0.0005
 
-	# wether to load pre-trained model
-	cfg.LOAD_PRETRAINED_MODEL = True
-	
-	# path to load the pre-trained model
-	cfg.PRETRAINED_MODEL_PATH = ''
-	
-	# print log to console in debug mode
-	cfg.DEBUG_MODE = False
-	
-	# gradients with norm larger than this is going to be clipped.
-	cfg.MAX_GRAD_NORM = 10.0
-	
-	# Whether to do data augmentation
-	cfg.DATA_AUGMENTATION = False
-	
-	# The range to randomly shift the image widht
-	cfg.DRIFT_X = 0
-	
-	# The range to randomly shift the image height
-	cfg.DRIFT_Y = 0
+    # wether to load pre-trained model
+    cfg.LOAD_PRETRAINED_MODEL = True
 
-	# small value used in batch normalization to prevent dividing by 0.
-	# The default value here is the same with caffe's default value.
-	cfg.BATCH_NORM_EPSILON = 1e-5
-	
-	# small value used in denominator to prevent division by 0
-	cfg.DENOM_EPSILON = 1e-12
-	
-	# capacity for tf.FIFOQueue 今回はPytorchなので不要なconfig?
-	cfg.QUEUE_CAPACITY = 80
-	
-	cfg.NUM_ENQUEUE_THREAD = 8
-	
-	return cfg
+    # path to load the pre-trained model
+    cfg.PRETRAINED_MODEL_PATH = ''
+
+    # print log to console in debug mode
+    cfg.DEBUG_MODE = False
+
+    # gradients with norm larger than this is going to be clipped.
+    cfg.MAX_GRAD_NORM = 10.0
+
+    # Whether to do data augmentation
+    # cfg.DATA_AUGMENTATION = False
+
+    # The range to randomly shift the image widht
+    cfg.DRIFT_X = 0
+
+    # The range to randomly shift the image height
+    cfg.DRIFT_Y = 0
+
+    # small value used in batch normalization to prevent dividing by 0.
+    # The default value here is the same with caffe's default value.
+    cfg.BATCH_NORM_EPSILON = 1e-5
+
+    # small value used in denominator to prevent division by 0
+    cfg.DENOM_EPSILON = 1e-12
+
+    # capacity for tf.FIFOQueue 今回はPytorchなので不要なconfig?
+    cfg.QUEUE_CAPACITY = 80
+
+    cfg.NUM_ENQUEUE_THREAD = 8
+
+    return cfg

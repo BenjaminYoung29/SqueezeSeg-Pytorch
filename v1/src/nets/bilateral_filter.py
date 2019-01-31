@@ -16,7 +16,8 @@ class BilateralFilter( nn.Module ):
     """
 
     def __init__( self, mc, stride=1, padding=0):
-        
+        super(BilateralFilter, self).__init__()
+
         self.mc = mc
         self.stride = stride
         self.padding = padding

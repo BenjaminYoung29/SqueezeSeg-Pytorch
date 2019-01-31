@@ -8,15 +8,14 @@ import torch.nn.functional as F
 from utils import util
 
 class RecurrentCRF( nn.Module ):
-    def __init__( self, mc, lidar_mask, stride=1, padding=0):
+    def __init__( self, mc, stride=1, padding=0):
+        super(RecurrentCRF, self).__init__()
+
         self.mc = mc
-        self.lidar_mask = lidar_mask
         self.stride = stride
         self.padding = padding
 
-    def locally_connected_layer(self, inputs, bilateral_filters, angular_filters, bi_angular_filters, condensing_kernel):
-        # "LIDAR MASK"のところはあとで考える
-
+    def locally_connected_layer(self, inputs, lidar_mask, bilateral_filters, angular_filters, bi_angular_filters, condensing_kernel):
         mc = self.mc
 
         size_z, size_a = mc.LCN_HEIGHT, mc.LCN_WIDTH
@@ -29,21 +28,20 @@ class RecurrentCRF( nn.Module ):
         bi_ang_output = F.conv2d(inputs, filter=bi_angular_filters, stride=self.stride, padding=self.padding)
 
         condensed_input = F.conv2d(
-                inputs*self.lidar_mask, filter=condensing_kernel, stride=self.stride, padding=self.padding
+                inputs * lidar_mask, filter=condensing_kernel, stride=self.stride, padding=self.padding
         )
         condensed_input = condensed_input.view(
                 batch, in_channel, size_z * size_a -1, zenith, azimuth
         )
-        condensed_input_np = condensed_input.numpy(condensed_input * bilateral_filters)
-        condensed_input = torch.from_numpy(np.sum(condensed_input_np, axis=2))
+        condensed_input = torch.sum((condensed_input * bilateral_filters), axis=2)
 
-        bi_output = condensed_input * self.lidar_mask
+        bi_output = torch.mul(condensed_input, lidar_mask)
         bi_output *= bi_ang_output
         
         return ang_output, bi_output
 
 
-    def forward( self, x, bilateral_filters ):
+    def forward( self, x, lidar_mask, bilateral_filters ):
         mc = self.mc
 
         # initialize compatibilty matrices
@@ -76,7 +74,7 @@ class RecurrentCRF( nn.Module ):
             unary = F.softmax(x, dim=-1)
 
             ang_output, bi_output = self.locally_connected_layer(
-                    unary, bilateral_filters, angular_filters, bi_angular_filters, condensing_kernel
+                    unary, lidar_mask, bilateral_filters, angular_filters, bi_angular_filters, condensing_kernel
             )
 
             ang_output = F.conv2d(ang_output, filter=angular_compat_kernel, stride=self.stride, padding=self.padding)

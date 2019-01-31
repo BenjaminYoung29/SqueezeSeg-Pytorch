@@ -4,8 +4,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from bilateral_filter import BilateralFilter
-from recurrent_crf import RecurrentCRF
+from .bilateral_filter import BilateralFilter
+from .recurrent_crf import RecurrentCRF
 
 class Conv( nn.Module ):
     def __init__( self, inputs, outputs, kernel_size=3, stride=1, padding=0 ):
@@ -37,7 +37,7 @@ class Fire( nn.Module ):
         """
         super(Fire, self).__init__()
         self.sq1x1 = Conv(inputs, o_sq1x1, kernel_size=1, stride=1, padding=0)
-        self.ex1x1 = Conv(o_sq1x1, q_ex1x1, kernel_size=1, stride=1, padding=0)
+        self.ex1x1 = Conv(o_sq1x1, o_ex1x1, kernel_size=1, stride=1, padding=0)
         self.ex3x3 = Conv(o_sq1x1, o_ex3x3, kernel_size=3, stride=1, padding=1)
     
     def forward(self,x):
@@ -68,12 +68,11 @@ class FireDeconv( nn.Module ):
 
 class SqueezeSeg( nn.Module ):
     # __init__(引数)　後で考える drop率とかかな
-    def __init__(self, mc, lidar_mask):
+    def __init__(self, mc):
         super(SqueezeSeg, self).__init__()
         
         # config
         self.mc = mc
-        self.lidar_mask = lidar_mask
 
         # encoder
         self.conv1 = Conv(5, 64, 3, 2, 0)
@@ -106,9 +105,9 @@ class SqueezeSeg( nn.Module ):
 
         self.bf = BilateralFilter(mc, stride=1, padding=0)
 
-        self.rc = RecurrentCRF(mc, self.lidar_mask, stride=1, padding=0)
+        self.rc = RecurrentCRF(mc, stride=1, padding=0)
 
-    def forward(self, x):
+    def forward(self, x, lidar_mask):
         # encoder
         out_c1 = self.conv1(x)
         out = self.pool1(out_c1)
@@ -130,7 +129,7 @@ class SqueezeSeg( nn.Module ):
         
         bf_w = self.bf(x[:, :3, :, :])
 
-        out = self.rc(out, bf_w)
+        out = self.rc(out, lidar_mask, bf_w)
 
         return out
 

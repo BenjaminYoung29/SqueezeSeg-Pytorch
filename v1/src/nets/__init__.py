@@ -1,1 +1,1 @@
-from squeezeSeg import SqueezeSeg
+from .squeezeSeg import SqueezeSeg

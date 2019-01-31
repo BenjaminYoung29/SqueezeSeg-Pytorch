@@ -2,6 +2,8 @@
 
 import pandas as pd
 
+import numpy as np
+
 import torch
 from torch.utils.data import Dataset
 
@@ -36,12 +38,12 @@ class KittiDataset(Dataset):
         lidar_inputs =  lidar_data[:, :, :5] # x, y, z, intensity, depth(range)
 
         lidar_mask = np.reshape(
-            (lidar_inputs[:, :, 4] > 0),
+            (lidar_inputs[:, :, 4] > 0) * 1,
             [mc.ZENITH_LEVEL, mc.AZIMUTH_LEVEL, 1]
         )
 
         # Normalize Inputs
-        lidar_inputs = (lidar - mc.INPUT_MEAN) / mc.INPUT_STD
+        lidar_inputs = (lidar_inputs - mc.INPUT_MEAN) / mc.INPUT_STD
         
         lidar_label = lidar_data[:, :, 5]
         
@@ -53,4 +55,4 @@ class KittiDataset(Dataset):
             lidar_inputs = self.transform(lidar_inputs)
             lidar_mask = self.transform(lidar_mask)
 
-        return (lidar_inputs, lidar_mask, torch.from_numpy(lidar_label), torch.from_numpy(weight))
+        return (lidar_inputs, lidar_mask, torch.from_numpy(lidar_label.copy()), torch.from_numpy(weight.copy()))

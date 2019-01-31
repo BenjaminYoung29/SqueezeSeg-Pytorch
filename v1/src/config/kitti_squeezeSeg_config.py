@@ -2,10 +2,10 @@
 
 import numpy as np
 
-from config import base_model_config
+from .config import base_model_config
 
 def kitti_squeezeSeg_config():
-	"""Specify the parameters to tune below."""
+    """Specify the parameters to tune below."""
     mc = base_model_config('KITTI')
 
     mc.CLASSES = ['unkwon', 'car', 'pedestrian', 'cyclist']
@@ -32,11 +32,11 @@ def kitti_squeezeSeg_config():
 
     mc.CLS_LOSS_COEF = 15.0
     mc.WEIGHT_DECAY = 0.0001
-    mc.LEARNING_RATE = 0.01
-    mc.DECAY_STEPS = 10000
-    mc.MAX_GRAD_NORM = 1.0
-    mc.MOMENTUM = 0.9
-    mc.LR_DECAY_FACTOR = 0.5
+    # mc.LEARNING_RATE = 0.01
+    # mc.DECAY_STEPS = 10000
+    # mc.MAX_GRAD_NORM = 1.0
+    # mc.MOMENTUM = 0.9
+    # mc.LR_DECAY_FACTOR = 0.5
 
     mc.DATA_AUGMENTATION = True
     mc.RANDOM_FLIPPING = True
