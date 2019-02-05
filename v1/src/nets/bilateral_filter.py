@@ -28,9 +28,11 @@ class BilateralFilter( nn.Module ):
         batch, in_channel, zenith, azimuth = list(x.size())
         size_z, size_a = mc.LCN_HEIGHT, mc.LCN_WIDTH
 
-        condensing_kernel = util.condensing_matrix(in_channel, size_z, size_a)
+        condensing_kernel = torch.from_numpy(
+                util.condensing_matrix(in_channel, size_z, size_a)
+        ).float()
 
-        condensed_input = F.conv2d(x, filter=condensing_kernel, stride=self.stride, padding=self.padding)
+        condensed_input = F.conv2d(x, weight=condensing_kernel, stride=self.stride, padding=self.padding)
 
         diff_x = x[:, 0, :, :].view(batch, 1, zenith, azimuth) \
                 - condensed_input[:, 0::in_channel, :, :]

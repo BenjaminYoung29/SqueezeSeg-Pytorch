@@ -23,17 +23,17 @@ class RecurrentCRF( nn.Module ):
         half_filter_dim = (size_z*size_a)//2
         batch, in_channel, zenith, azimuth = list(inputs.size())
         
-        ang_output = F.conv2d(inputs, filter=angular_filters, stride=self.stride, padding=self.padding)
+        ang_output = F.conv2d(inputs, weight=angular_filters, stride=self.stride, padding=self.padding)
 
-        bi_ang_output = F.conv2d(inputs, filter=bi_angular_filters, stride=self.stride, padding=self.padding)
+        bi_ang_output = F.conv2d(inputs, weight=bi_angular_filters, stride=self.stride, padding=self.padding)
 
         condensed_input = F.conv2d(
-                inputs * lidar_mask, filter=condensing_kernel, stride=self.stride, padding=self.padding
+                inputs * lidar_mask, weight=condensing_kernel, stride=self.stride, padding=self.padding
         )
         condensed_input = condensed_input.view(
                 batch, in_channel, size_z * size_a -1, zenith, azimuth
         )
-        condensed_input = torch.sum((condensed_input * bilateral_filters), axis=2)
+        condensed_input = torch.sum((condensed_input * bilateral_filters), 2)
 
         bi_output = torch.mul(condensed_input, lidar_mask)
         bi_output *= bi_ang_output
@@ -42,7 +42,9 @@ class RecurrentCRF( nn.Module ):
 
 
     def forward( self, x, lidar_mask, bilateral_filters ):
+
         mc = self.mc
+        size_z, size_a = mc.LCN_HEIGHT, mc.LCN_WIDTH
 
         # initialize compatibilty matrices
         compat_kernel_init = torch.from_numpy(
@@ -59,16 +61,16 @@ class RecurrentCRF( nn.Module ):
         angular_compat_kernel.requires_grad_()
 
         condensing_kernel = torch.from_numpy(
-                util.condensing_matrix(mc.NUM_CLASS, self.sizes[0], self.sizes[1])
-        )
+                util.condensing_matrix(mc.NUM_CLASS, size_z, size_a)
+        ).float()
 
         angular_filters = torch.from_numpy(
-                util.angular_filter_kernel(mc.NUM_CLASS, self.sizes[0], self.sizes[1], mc.ANG_THETA_A**2)
-        )
+                util.angular_filter_kernel(mc.NUM_CLASS, size_z, size_a, mc.ANG_THETA_A**2)
+        ).float()
 
         bi_angular_filters = torch.from_numpy(
-                util.angular_filter_kernel(mc.NUM_CLASS, self.sizes[0], self.sizes[1], mc.BILATERAL_THETA_A**2)
-        )
+                util.angular_filter_kernel(mc.NUM_CLASS, size_z, size_a, mc.BILATERAL_THETA_A**2)
+        ).float()
 
         for it in range(mc.RCRF_ITER):
             unary = F.softmax(x, dim=-1)
@@ -77,9 +79,9 @@ class RecurrentCRF( nn.Module ):
                     unary, lidar_mask, bilateral_filters, angular_filters, bi_angular_filters, condensing_kernel
             )
 
-            ang_output = F.conv2d(ang_output, filter=angular_compat_kernel, stride=self.stride, padding=self.padding)
+            ang_output = F.conv2d(ang_output, weight=angular_compat_kernel, stride=self.stride, padding=0)
 
-            bi_output = F.conv2d(bi_output, filter=bi_compat_kernel, stride=self.stride, padding=self.padding)
+            bi_output = F.conv2d(bi_output, weight=bi_compat_kernel, stride=self.stride, padding=0)
 
             pairwise = torch.add(ang_output, bi_output)
 

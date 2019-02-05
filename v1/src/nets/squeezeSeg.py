@@ -57,14 +57,14 @@ class FireDeconv( nn.Module ):
     def __init__( self, inputs, o_sq1x1, o_ex1x1, o_ex3x3 ):
         super(FireDeconv, self).__init__()
         self.sq1x1 = Conv(inputs, o_sq1x1, 1, 1, 0)
-        self.deconv = Deconv(o_sq1x1, o_sq1x1, [1,4], [1,2], [0,2])
+        self.deconv = Deconv(o_sq1x1, o_sq1x1, [1,4], [1,2], [0,1])
         self.ex1x1 = Conv(o_sq1x1, o_ex1x1, 1, 1, 0)
         self.ex3x3 = Conv(o_sq1x1, o_ex3x3, 3, 1, 1)
 
     def forward(self,x):
         x = self.sq1x1(x)
         x = self.deconv(x)
-        return torch.cat( [self.ex1x1(x), self.ex3x3(x)], 3)
+        return torch.cat( [self.ex1x1(x), self.ex3x3(x)], 1)
 
 class SqueezeSeg( nn.Module ):
     # __init__(引数)　後で考える drop率とかかな
@@ -75,17 +75,17 @@ class SqueezeSeg( nn.Module ):
         self.mc = mc
 
         # encoder
-        self.conv1 = Conv(5, 64, 3, 2, 0)
+        self.conv1 = Conv(5, 64, 3, (1,2), 1)
         self.conv1_skip = Conv(5, 64, 1, 1, 0)
-        self.pool1 = MaxPool(3, 2, 0)
+        self.pool1 = MaxPool(3, (1,2), (1,0))
         
         self.fire2 = Fire(64, 16, 64, 64)
         self.fire3 = Fire(128, 16, 64, 64)
-        self.pool3 = MaxPool(3, 2, 0)
+        self.pool3 = MaxPool(3, (1,2), (1,0))
         
         self.fire4 = Fire(128, 32, 128, 128)
         self.fire5 = Fire(256,32,128,128)
-        self.pool5 = MaxPool(3, 2, 0)
+        self.pool5 = MaxPool(3, (1,2), (1,0))
         
         self.fire6 = Fire(256, 48, 192, 192)
         self.fire7 = Fire(384, 48, 192, 192)
@@ -103,9 +103,9 @@ class SqueezeSeg( nn.Module ):
         # reluを適用させない
         self.conv14 = nn.Conv2d(64, mc.NUM_CLASS, kernel_size=3, stride=1, padding=1)
 
-        self.bf = BilateralFilter(mc, stride=1, padding=0)
+        self.bf = BilateralFilter(mc, stride=1, padding=(1,2))
 
-        self.rc = RecurrentCRF(mc, stride=1, padding=0)
+        self.rc = RecurrentCRF(mc, stride=1, padding=(1,2))
 
     def forward(self, x, lidar_mask):
         # encoder
@@ -119,12 +119,12 @@ class SqueezeSeg( nn.Module ):
         out = self.pool5(out_f5)
 
         out = self.fire9( self.fire8( self.fire7( self.fire6(out) ) ) )
-
+        
         # decoder
-        out = self.fire10(out) + out_f5
-        out = self.fire11(out) + out_f3
-        out = self.fire12(out) + out_c1
-        out = self.drop( self.fire13(out) + self.conv1_skip(x) )
+        out = torch.add(self.fire10(out), out_f5)
+        out = torch.add(self.fire11(out), out_f3)
+        out = torch.add(self.fire12(out), out_c1)
+        out = self.drop( torch.add(self.fire13(out), self.conv1_skip(x)) )
         out = self.conv14(out)
         
         bf_w = self.bf(x[:, :3, :, :])

@@ -40,15 +40,13 @@ class SqueezeSegLoss( nn.Module ):
     def __init__(self, mc):
         super(SqueezeSegLoss, self).__init__()
         self.mc = mc
-        self.softmax = nn.Softmax()
-        self.cross_entropy = nn.CrossEntropyLoss()
         
-    def forward(self, outputs, target, lidar_mask, loss_weight):
+    def forward(self, outputs, targets, lidar_mask, loss_weight):
         mc = self.mc
 
-        loss = self.cross_entropy(outputs.view(-1, mc.NUM_CLASS), target.view(-1,))
-        loss *= lidar_mask.view(-1,)
-        loss *= loss_weight(-1,)
+        loss = F.cross_entropy(outputs.view(-1, mc.NUM_CLASS), targets.view(-1,))
+        loss = lidar_mask.view(-1,) * loss
+        loss = loss_weight.view(-1,) * loss
         loss = torch.sum(loss) / torch.sum(lidar_mask) * mc.CLS_LOSS_COEF
 
         return loss 
@@ -59,7 +57,7 @@ def train(model, train_loader, criterion, optimizer, epoch):
 
     running_loss = 0.0
     
-    for batch_idx, datas in enumerate(train_loader):
+    for i, datas in enumerate(train_loader):
         inputs, mask, targets, weight = datas
         inputs, mask, targets, weight = \
                 inputs.to(device), mask.to(device), targets.to(device), weight.to(device)

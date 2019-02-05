@@ -50,9 +50,9 @@ class KittiDataset(Dataset):
         weight = np.zeros(lidar_label.shape)
         for l in range(mc.NUM_CLASS):
             weight[lidar_label == l] = mc.CLS_LOSS_WEIGHT[int(l)]
-        
+
         if self.transform:
             lidar_inputs = self.transform(lidar_inputs)
             lidar_mask = self.transform(lidar_mask)
 
-        return (lidar_inputs, lidar_mask, torch.from_numpy(lidar_label.copy()), torch.from_numpy(weight.copy()))
+        return (lidar_inputs.float(), lidar_mask.float(), torch.from_numpy(lidar_label.copy()).long(), torch.from_numpy(weight.copy()).float())
