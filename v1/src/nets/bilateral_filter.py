@@ -6,6 +6,8 @@ import torch.nn.functional as F
 
 from utils import util
 
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
 class BilateralFilter( nn.Module ):
     """ Computing pairwise energy with a bilateral filter for CRF
 
@@ -32,7 +34,7 @@ class BilateralFilter( nn.Module ):
                 util.condensing_matrix(in_channel, size_z, size_a)
         ).float()
 
-        condensed_input = F.conv2d(x, weight=condensing_kernel, stride=self.stride, padding=self.padding)
+        condensed_input = F.conv2d(x, weight=condensing_kernel.to(device), stride=self.stride, padding=self.padding)
 
         diff_x = x[:, 0, :, :].view(batch, 1, zenith, azimuth) \
                 - condensed_input[:, 0::in_channel, :, :]

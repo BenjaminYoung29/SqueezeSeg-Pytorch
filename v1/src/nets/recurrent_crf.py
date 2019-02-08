@@ -7,6 +7,8 @@ import torch.nn.functional as F
 
 from utils import util
 
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
 class RecurrentCRF( nn.Module ):
     def __init__( self, mc, stride=1, padding=0):
         super(RecurrentCRF, self).__init__()
@@ -71,6 +73,10 @@ class RecurrentCRF( nn.Module ):
         bi_angular_filters = torch.from_numpy(
                 util.angular_filter_kernel(mc.NUM_CLASS, size_z, size_a, mc.BILATERAL_THETA_A**2)
         ).float()
+
+        # GPU
+        bi_compat_kernel, angular_compat_kernel, condensing_kernel, angular_filters, bi_angular_filters = \
+                bi_compat_kernel.to(device), angular_compat_kernel.to(device), condensing_kernel.to(device), angular_filters.to(device), bi_angular_filters.to(device)
 
         for it in range(mc.RCRF_ITER):
             unary = F.softmax(x, dim=-1)

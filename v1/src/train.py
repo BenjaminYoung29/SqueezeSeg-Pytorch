@@ -3,6 +3,7 @@
 import argparse
 import os.path
 import sys
+import datetime
 
 import numpy as np
 
@@ -11,6 +12,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 from torchvision import datasets, transforms
+import torch.backends.cudnn as cudnn
 
 from config import *
 from datasets import * 
@@ -20,12 +22,20 @@ from nets import *
 parser = argparse.ArgumentParser(description='Pytorch SqueezeSeg Training')
 
 parser.add_argument('--csv_path', default='../../data/ImageSet/csv/', type=str, help='path to where csv file')
-parser.add_argument('--dir_path', default='../../data/lidar_2d/', type=str, help='path to where data')
+parser.add_argument('--data_path', default='../../data/lidar_2d/', type=str, help='path to where data')
+parser.add_argument('--model_path', default='./model', type=str, help='path to where model')
 
 # Hyper Params
 parser.add_argument('--lr', default=0.01, type=float, help='initial learning rate')
 parser.add_argument('--momentum', default=0.9, type=float, help='momentum for optim')
+parser.add_argument('--weight_decay', default=0.0001, type=float, help='weight decay for optim')
+parser.add_argument('--lr_step', default=7, type=int, help='number of lr step')
+parser.add_argument('--lr_gamma', default=0.1, type=float, help='gamma for lr scheduler')
+
 parser.add_argument('--epochs', default=1, type=int, help='number of total epochs to run')
+parser.add_argument('--start_epoch', default=0, type=int, help='number of epoch to start learning')
+parser.add_argument('--pretrain', default=False, type=bool, help='Whether or not to pretrain')
+parser.add_argument('--resume', default=False, type=bool, help='Whether or not to resume')
 
 # Device Option
 parser.add_argument('--gpu_ids', default=[0,1], type=int, nargs="+", help='which gpu you use')
@@ -53,11 +63,13 @@ class SqueezeSegLoss( nn.Module ):
 
 
 def train(model, train_loader, criterion, optimizer, epoch):
+    
     model.train()
 
-    running_loss = 0.0
+    total_loss = 0.0
+    total_size = 0.0
     
-    for i, datas in enumerate(train_loader):
+    for batch_idx, datas in enumerate(train_loader):
         inputs, mask, targets, weight = datas
         inputs, mask, targets, weight = \
                 inputs.to(device), mask.to(device), targets.to(device), weight.to(device)
@@ -65,20 +77,26 @@ def train(model, train_loader, criterion, optimizer, epoch):
         optimizer.zero_grad()
         outputs = model(inputs, mask)
         loss = criterion(outputs, targets, mask, weight)
+
         loss.backward()
         optimizer.step()
 
         # print statistics
-        running_loss += loss.item()
-        if (i+1) % 10 == 0:
-            print(f'[{epoch+1}, {i+1:05}] loss: {running_loss/10:.3f}')
-            running_loss = 0.0
+        total_loss += loss.item()
+        total_size += inputs.size(0)
+        if (batch_idx + 1) % 100 == 0:
+            now = datetime.datetime.now()
 
-def validate(model, val_loader, epoch):
+            print(f'[{now}] Train Epoch: {epoch} [{(batch_idx+1) * len(inputs)}/{len(train_loader.dataset)} ({100. * batch_idx / len(train_loader):.0f}%)]\tAverage loss: {total_loss / total_size:.6f}')
+
+
+def test(mc, model, val_loader, epoch):
+    
     model.eval()
     
-    correct = 0
-    total = 0
+    total_tp = np.zeros(mc.NUM_CLASS)
+    total_fp = np.zeros(mc.NUM_CLASS)
+    total_fn = np.zeros(mc.NUM_CLASS)
 
     with torch.no_grad():
         for batch_idx, datas in enumerate(val_loader):
@@ -87,23 +105,39 @@ def validate(model, val_loader, epoch):
                     inputs.to(device), mask.to(device), targets.to(device), weight.to(device)
 
             outputs = model(inputs, mask)
-            print(f'Outputs: {outputs}')
             
             _, predicted = torch.max(outputs.data, 1)
             
-            #total += labels.size(0)
-            #correct += (predicted == labels).sum()
+            tp, fp, fn = evaluate(targets, predicted, mc.NUM_CLASS)
+            
+            total_tp += tp
+            total_fp += fp
+            total_fn += fn
 
-    #print(f'Accuracy of the network on the test images: {100 * correct / total}')
+        iou = total_tp / (total_tp+total_fn+total_fp+1e-12)
+        precision = total_tp / (total_tp+total_fp+1e-12)
+        recall = total_tp / (total_tp+total_fn+1e-12)
+
+        print('--------------------------------------------------------------------------------')
+        print()
+        print_evaluate(mc, 'IoU', iou)
+        print_evaluate(mc, 'Precision', precision)
+        print_evaluate(mc, 'Recall', recall)
+        print('--------------------------------------------------------------------------------')
+
+
 
 if __name__ == '__main__':
     mc = kitti_squeezeSeg_config()
+
+    if os.path.exists(args.model_path) is False:
+        os.mkdir(args.model_path)
     
     # train data 読み込み
     train_datasets = KittiDataset(
         mc, 
         csv_file = args.csv_path + 'train.csv', 
-        root_dir = args.dir_path, 
+        root_dir = args.data_path, 
         transform = transforms.Compose([transforms.ToTensor()])
     )
 
@@ -118,7 +152,7 @@ if __name__ == '__main__':
     val_datasets = KittiDataset(
         mc,
         csv_file = args.csv_path + 'val.csv',
-        root_dir = args.dir_path,
+        root_dir = args.data_path,
         transform = transforms.Compose([transforms.ToTensor()])
     )
 
@@ -131,15 +165,20 @@ if __name__ == '__main__':
 
     model = SqueezeSeg(mc).to(device)
     
+    if args.pretrain:
+        if args.resume:
+            load_checkpoint(model_dir, args.start_epoch - 1, model)
+
     if device == 'cuda':
         model = torch.nn.DataParallel(model)
-    
-    # Lossは自作する
-    criterion = SqueezeSegLoss(mc)
-    optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum)
-    scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=7, gamma=0.1)
+        cudnn.benchmark = True
 
-    for epoch in range(args.epochs):
+    criterion = SqueezeSegLoss(mc)
+    optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
+    scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=args.lr_step, gamma=args.lr_gamma)
+
+    for epoch in range(args.start_epoch, args.epochs):
         scheduler.step()
         train(model, train_dataloader, criterion, optimizer, epoch)
-        validate(model, val_dataloader, epoch) 
+        test(mc, model, val_dataloader, epoch)
+        save_checkpoint(args.model_path, epoch, model)

@@ -2,6 +2,9 @@
 
 import numpy as np
 import time
+import os
+
+import torch
 
 def visualize_seg(label_map, mc, one_hot=False):
     if one_hot:
@@ -58,7 +61,7 @@ def rel_accuracy_at_thresh_fn(pred_ogm, gt_ogm, mask, thresh):
                 np.minimum(gt_ogm, pred_ogm) < thresh)
         ) / float(np.sum(mask))
 
-def evaluate_iou(label, pred, n_class, epsilon=1e-12):
+def evaluate(label, pred, n_class):
     """Evaluation script to compute pixel level IoU.
 
     Args:
@@ -76,23 +79,42 @@ def evaluate_iou(label, pred, n_class, epsilon=1e-12):
 
     assert label.shape == pred.shape, \
         'label and pred shape mismatch: {} vs {}'.format(label.shape, pred.shape)
+    
+    label = label.cpu().numpy()
+    pred = pred.cpu().numpy()
 
-    ious = np.zeros(n_class)
-    tps = np.zeros(n_class)
-    fns = np.zeros(n_class)
-    fps = np.zeros(n_class)
+    tp = np.zeros(n_class)
+    fn = np.zeros(n_class)
+    fp = np.zeros(n_class)
 
     for cls_id in range(n_class):
-        tp = np.sum(pred[label == cls_id] == cls_id)
-        fp = np.sum(label[pred == cls_id] != cls_id)
-        fn = np.sum(pred[label == cls_id] != cls_id)
+        tp_cls = np.sum(pred[label == cls_id] == cls_id)
+        fp_cls = np.sum(label[pred == cls_id] != cls_id)
+        fn_cls = np.sum(pred[label == cls_id] != cls_id)
 
-        ious[cls_id] = tp/(tp+fn+fp+epsilon)
-        tps[cls_id] = tp
-        fps[cls_id] = fp
-        fns[cls_id] = fn
+        tp[cls_id] = tp_cls
+        fp[cls_id] = fp_cls
+        fn[cls_id] = fn_cls
 
-    return ious, tps, fps, fns
+    return tp, fp, fn
+
+def print_evaluate(mc, name, value):
+    print(f'{name}:') 
+    for i in range(1, mc.NUM_CLASS):
+        print(f'{mc.CLASSES[i]}: {value[i]}')
+    print()
+
+def save_checkpoint(path, epoch, model):
+    save_path = os.path.join(path, f"model_path_{epoch}.pkl")
+    torch.save(model.state_dict(), save_path)
+    print(f"Checkpoint saved to {save_path}")
+
+def load_checkpoint(model_dir, epoch, model):
+    load_path = os.path.join(model_dir, f"model_epoch_{epoch}.pkl")
+    checkpoint = torch.load(load_path)
+    model.load_state_dict(checkpoint)
+    print(f"Checkpoint loaded to {load_path}")
+
 
 def condensing_matrix(in_channel, size_z, size_a):
     assert size_z % 2 == 1 and size_a % 2==1, \
