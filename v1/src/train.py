@@ -19,6 +19,8 @@ from datasets import *
 from utils import *
 from nets import *
 
+from tensorboardX import import SummaryWriter
+
 parser = argparse.ArgumentParser(description='Pytorch SqueezeSeg Training')
 
 parser.add_argument('--csv_path', default='../../data/ImageSet/csv/', type=str, help='path to where csv file')
@@ -42,6 +44,9 @@ parser.add_argument('--gpu_ids', default=[0,1], type=int, nargs="+", help='which
 parser.add_argument('-b', '--batch_size', default=8, type=int, help='mini-batch size')
 
 args = parser.parse_args()
+
+# To use TensorboardX
+writer = SummaryWriter()
 
 os.environ['CUDA_VISIBLE_DEVICES'] = ','.join(str(e) for e in args.gpu_ids)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu") 
@@ -69,7 +74,7 @@ def train(model, train_loader, criterion, optimizer, epoch):
     total_loss = 0.0
     total_size = 0.0
     
-    for batch_idx, datas in enumerate(train_loader):
+    for batch_idx, datas in enumerate(train_loader, 1):
         inputs, mask, targets, weight = datas
         inputs, mask, targets, weight = \
                 inputs.to(device), mask.to(device), targets.to(device), weight.to(device)
@@ -77,6 +82,7 @@ def train(model, train_loader, criterion, optimizer, epoch):
         optimizer.zero_grad()
         outputs = model(inputs, mask)
         loss = criterion(outputs, targets, mask, weight)
+        writer.add_scalar('data/loss', loss, batch_idx * (epoch+1))
 
         loss.backward()
         optimizer.step()
@@ -84,10 +90,10 @@ def train(model, train_loader, criterion, optimizer, epoch):
         # print statistics
         total_loss += loss.item()
         total_size += inputs.size(0)
-        if (batch_idx + 1) % 100 == 0:
+        if batch_idx % 100 == 0:
             now = datetime.datetime.now()
 
-            print(f'[{now}] Train Epoch: {epoch} [{(batch_idx+1) * len(inputs)}/{len(train_loader.dataset)} ({100. * batch_idx / len(train_loader):.0f}%)]\tAverage loss: {total_loss / total_size:.6f}')
+            print(f'[{now}] Train Epoch: {epoch} [{batch_idx * len(inputs)}/{len(train_loader.dataset)} ({100. * batch_idx / len(train_loader):.0f}%)]\tAverage loss: {total_loss / total_size:.6f}')
 
 
 def test(mc, model, val_loader, epoch):
@@ -182,3 +188,7 @@ if __name__ == '__main__':
         train(model, train_dataloader, criterion, optimizer, epoch)
         test(mc, model, val_dataloader, epoch)
         save_checkpoint(args.model_path, epoch, model)
+
+    # export scalar data to JSON for external processing
+    writer.export_scalars_to_json("./all_scalars.json")
+    writer.close()
