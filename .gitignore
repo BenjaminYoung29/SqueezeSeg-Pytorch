@@ -1,4 +1,5 @@
 data/lidar_2d/
+v1/runs/
 .DS_Store
 v1/src/*/__pycache__/*
-v1/src/model/
+v1/model/

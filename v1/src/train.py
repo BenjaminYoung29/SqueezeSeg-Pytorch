@@ -19,12 +19,12 @@ from datasets import *
 from utils import *
 from nets import *
 
-from tensorboardX import import SummaryWriter
+from tensorboardX import SummaryWriter
 
 parser = argparse.ArgumentParser(description='Pytorch SqueezeSeg Training')
 
-parser.add_argument('--csv_path', default='../../data/ImageSet/csv/', type=str, help='path to where csv file')
-parser.add_argument('--data_path', default='../../data/lidar_2d/', type=str, help='path to where data')
+parser.add_argument('--csv_path', default='../data/ImageSet/csv/', type=str, help='path to where csv file')
+parser.add_argument('--data_path', default='../data/lidar_2d/', type=str, help='path to where data')
 parser.add_argument('--model_path', default='./model', type=str, help='path to where model')
 
 # Hyper Params
@@ -40,7 +40,7 @@ parser.add_argument('--pretrain', default=False, type=bool, help='Whether or not
 parser.add_argument('--resume', default=False, type=bool, help='Whether or not to resume')
 
 # Device Option
-parser.add_argument('--gpu_ids', default=[0,1], type=int, nargs="+", help='which gpu you use')
+parser.add_argument('--gpu_ids', default=[0,1], nargs="+", type=int, help='which gpu you use')
 parser.add_argument('-b', '--batch_size', default=8, type=int, help='mini-batch size')
 
 args = parser.parse_args()
@@ -173,7 +173,8 @@ if __name__ == '__main__':
     
     if args.pretrain:
         if args.resume:
-            load_checkpoint(model_dir, args.start_epoch - 1, model)
+            print(args.resu)
+            load_checkpoint(args.model_dir, args.start_epoch - 1, model)
 
     if device == 'cuda':
         model = torch.nn.DataParallel(model)
