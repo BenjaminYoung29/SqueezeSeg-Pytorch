@@ -40,7 +40,7 @@ parser.add_argument('--pretrain', default=False, type=bool, help='Whether or not
 parser.add_argument('--resume', default=False, type=bool, help='Whether or not to resume')
 
 # Device Option
-parser.add_argument('--gpu_ids', default=[0,1], nargs="+", type=int, help='which gpu you use')
+parser.add_argument('--gpu_ids', dest='gpu_ids', default=[0,1], nargs="+", type=int, help='which gpu you use')
 parser.add_argument('-b', '--batch_size', default=8, type=int, help='mini-batch size')
 
 args = parser.parse_args()
@@ -188,7 +188,7 @@ if __name__ == '__main__':
         scheduler.step()
         train(model, train_dataloader, criterion, optimizer, epoch)
         test(mc, model, val_dataloader, epoch)
-        save_checkpoint(args.model_path, epoch, model)
+        #save_checkpoint(args.model_path, epoch, model)
 
     # export scalar data to JSON for external processing
     writer.export_scalars_to_json("./all_scalars.json")
