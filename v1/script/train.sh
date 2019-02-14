@@ -1,5 +1,5 @@
 python ./src/train.py \
-    --epochs 2500 \
+    --epochs 1 \
     --start_epoch 0 \
     --gpu_ids 0 1\
-    --batch_size 16
+    --batch_size 32

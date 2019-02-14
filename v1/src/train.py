@@ -82,7 +82,7 @@ def train(model, train_loader, criterion, optimizer, epoch):
         optimizer.zero_grad()
         outputs = model(inputs, mask)
         loss = criterion(outputs, targets, mask, weight)
-        writer.add_scalar('data/loss', loss, batch_idx * (epoch+1))
+        writer.add_scalar('data/loss', loss/args.batch_size, batch_idx * (epoch+1))
 
         loss.backward()
         optimizer.step()
@@ -114,6 +114,11 @@ def test(mc, model, val_loader, epoch):
             
             _, predicted = torch.max(outputs.data, 1)
             
+            
+            writer.add_image('Input/Image/', (img_normalize(inputs[0, 3, :, :])).cpu(), batch_idx * (epoch+1))
+            print(f'visualize_seg: {visualize_seg(predicted[0], mc)}')
+            writer.add_image('Predict/Image/', visualize_seg(predicted, mc), batch_idx * (epoch+1))
+
             tp, fp, fn = evaluate(targets, predicted, mc.NUM_CLASS)
             
             total_tp += tp
@@ -140,6 +145,7 @@ if __name__ == '__main__':
         os.mkdir(args.model_path)
     
     # train data 読み込み
+    #print(f'augmentation: {mc.DATA_AUGMENTATION}')
     train_datasets = KittiDataset(
         mc, 
         csv_file = args.csv_path + 'train.csv', 
@@ -151,7 +157,7 @@ if __name__ == '__main__':
         train_datasets,
         batch_size=args.batch_size,
         shuffle=True,
-        num_workers=0
+        num_workers=4
     )
 
     # val data 読み込み
@@ -166,7 +172,7 @@ if __name__ == '__main__':
         val_datasets,
         batch_size=args.batch_size,
         shuffle=True,
-        num_workers=0
+        num_workers=4
     )
 
     model = SqueezeSeg(mc).to(device)
@@ -175,7 +181,7 @@ if __name__ == '__main__':
         if args.resume:
             load_checkpoint(args.model_dir, args.start_epoch - 1, model)
 
-    if device == 'cuda':
+    if torch.cuda.device_count() > 1:
         model = torch.nn.DataParallel(model)
         cudnn.benchmark = True
 

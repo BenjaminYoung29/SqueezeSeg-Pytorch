@@ -6,15 +6,22 @@ import os
 
 import torch
 
+def img_normalize(x):
+    return ((x - torch.min(x)) / (torch.max(x) - torch.min(x))).view(
+                1, x.size()[0], x.size()[1]
+            )
+
 def visualize_seg(label_map, mc, one_hot=False):
+    print(f"label_map_size: {label_map.size()}")
     if one_hot:
         label_map = np.argmax(label_map, axis=-1)
-        out = np.zeros((label_map.shape[0], label_map.shape[1], label_map.shape[2], 3))
+    
+    out = torch.zeros(label_map.size()[0], label_map.size()[1], label_map.size()[2], 3)
 
     for l in range(1, mc.NUM_CLASS):
         out[label_map==l, :] = mc.CLS_COLOR_MAP[l]
         
-    return out
+    return out.transpose(2,3).transpose(1,2)
 
 def bgr_to_rgb(ims):
     """Convert a list of images from BGR format to RGB format."""
