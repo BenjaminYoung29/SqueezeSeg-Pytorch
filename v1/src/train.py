@@ -31,7 +31,7 @@ parser.add_argument('--model_path', default='./model', type=str, help='path to w
 parser.add_argument('--lr', default=0.01, type=float, help='initial learning rate')
 parser.add_argument('--momentum', default=0.9, type=float, help='momentum for optim')
 parser.add_argument('--weight_decay', default=0.0001, type=float, help='weight decay for optim')
-parser.add_argument('--lr_step', default=7, type=int, help='number of lr step')
+parser.add_argument('--lr_step', default=1000, type=int, help='number of lr step')
 parser.add_argument('--lr_gamma', default=0.1, type=float, help='gamma for lr scheduler')
 
 parser.add_argument('--epochs', default=1, type=int, help='number of total epochs to run')
@@ -173,7 +173,6 @@ if __name__ == '__main__':
     
     if args.pretrain:
         if args.resume:
-            print(args.resu)
             load_checkpoint(args.model_dir, args.start_epoch - 1, model)
 
     if device == 'cuda':
