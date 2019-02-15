@@ -12,15 +12,14 @@ def img_normalize(x):
             )
 
 def visualize_seg(label_map, mc, one_hot=False):
-    print(f"label_map_size: {label_map.size()}")
     if one_hot:
         label_map = np.argmax(label_map, axis=-1)
-    
-    out = torch.zeros(label_map.size()[0], label_map.size()[1], label_map.size()[2], 3)
+
+    out = torch.zeros([label_map.size()[0], label_map.size()[1], label_map.size()[2], 3], dtype=torch.float64)
 
     for l in range(1, mc.NUM_CLASS):
-        out[label_map==l, :] = mc.CLS_COLOR_MAP[l]
-        
+        out[label_map==l, :] = torch.from_numpy(mc.CLS_COLOR_MAP[l])
+
     return out.transpose(2,3).transpose(1,2)
 
 def bgr_to_rgb(ims):
@@ -64,7 +63,7 @@ def abs_accuracy_at_thresh_fn(diff, thresh, mask):
 
 def rel_accuracy_at_thresh_fn(pred_ogm, gt_ogm, mask, thresh):
     return np.sum(
-        mask * (np.maximum(pred_ogm, gt_ogm) / 
+        mask * (np.maximum(pred_ogm, gt_ogm) /
                 np.minimum(gt_ogm, pred_ogm) < thresh)
         ) / float(np.sum(mask))
 
@@ -86,7 +85,7 @@ def evaluate(label, pred, n_class):
 
     assert label.shape == pred.shape, \
         'label and pred shape mismatch: {} vs {}'.format(label.shape, pred.shape)
-    
+
     label = label.cpu().numpy()
     pred = pred.cpu().numpy()
 
@@ -106,7 +105,7 @@ def evaluate(label, pred, n_class):
     return tp, fp, fn
 
 def print_evaluate(mc, name, value):
-    print(f'{name}:') 
+    print(f'{name}:')
     for i in range(1, mc.NUM_CLASS):
         print(f'{mc.CLASSES[i]}: {value[i]}')
     print()
@@ -158,9 +157,9 @@ def angular_filter_kernel(in_channel, size_z, size_a, theta_sqs):
         size_z: size on the z dimension.
         size_a: size on the a dimension.
         in_channel: input (and output) channel size
-        theta_sqs: an array with length == in_channel. Contains variance for 
+        theta_sqs: an array with length == in_channel. Contains variance for
             gaussian kernel for each channel.
-        
+
     Returns:
         kernel: ND array of size [in_channel, in_channel, size_z, size_a], which is
             just guassian kernel parameters for each channel.
@@ -184,6 +183,6 @@ def angular_filter_kernel(in_channel, size_z, size_a, theta_sqs):
         # exclude the center position
         kernel_2d[size_z//2, size_a//2] = 0
         kernel[k, k, :, :] = kernel_2d
-    
+
     return kernel
 

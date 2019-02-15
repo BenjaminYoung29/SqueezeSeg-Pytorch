@@ -23,12 +23,11 @@ class KittiDataset(Dataset):
 
     def __getitem__(self, idx):
         mc = self.mc
-        
+
         lidar_name = os.path.join(self.root_dir, self.lidar_2d_csv.iloc[idx, 0])
 
         lidar_data = np.load(lidar_name).astype(np.float32)
-       
-        #print(f'augmentation: {mc.DATA_AUGMENTATION}')
+
         if mc.DATA_AUGMENTATION:
             if mc.RANDOM_FLIPPING:
                 if np.random.rand() > 0.5:
@@ -45,9 +44,9 @@ class KittiDataset(Dataset):
 
         # Normalize Inputs
         lidar_inputs = (lidar_inputs - mc.INPUT_MEAN) / mc.INPUT_STD
-        
+
         lidar_label = lidar_data[:, :, 5]
-        
+
         weight = np.zeros(lidar_label.shape)
         for l in range(mc.NUM_CLASS):
             weight[lidar_label == l] = mc.CLS_LOSS_WEIGHT[int(l)]

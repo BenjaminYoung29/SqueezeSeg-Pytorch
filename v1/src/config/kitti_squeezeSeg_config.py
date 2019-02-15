@@ -12,11 +12,11 @@ def kitti_squeezeSeg_config():
     mc.NUM_CLASS = len(mc.CLASSES)
     mc.CLS_2_ID = dict(zip(mc.CLASSES, range(len(mc.CLASSES))))
     mc.CLS_LOSS_WEIGHT = np.array([1/15.0, 1.0, 10.0, 10.0])
-    mc.CLS_COLOR_MAP = np.array([[0.00, 0.00, 0.00], 
+    mc.CLS_COLOR_MAP = np.array([[0.00, 0.00, 0.00],
                                  [0.12, 0.56, 0.37],
                                  [0.66, 0.55, 0.71],
                                  [0.58, 0.72, 0.88]])
-    
+
     mc.AZIMUTH_LEVEL = 512
     mc.ZENITH_LEVEL = 64
 
