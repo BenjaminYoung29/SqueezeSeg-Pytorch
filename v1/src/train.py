@@ -197,7 +197,7 @@ if __name__ == '__main__':
         scheduler.step()
         train(model, train_dataloader, criterion, optimizer, epoch)
         test(mc, model, val_dataloader, epoch)
-        #save_checkpoint(args.model_path, epoch, model)
+        save_checkpoint(args.model_path, epoch, model)
 
     # export scalar data to JSON for external processing
     writer.export_scalars_to_json("./all_scalars.json")

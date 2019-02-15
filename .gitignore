@@ -2,5 +2,6 @@ data/lidar_2d/
 v1/runs/
 .DS_Store
 v1/src/*/__pycache__/*
+v1/script/
 v1/model/
 all_scalars.json
