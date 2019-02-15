@@ -133,13 +133,11 @@ def test(mc, model, val_loader, epoch):
         precision = total_tp / (total_tp+total_fp+1e-12)
         recall = total_tp / (total_tp+total_fn+1e-12)
 
-        print('--------------------------------------------------------------------')
         print()
         print_evaluate(mc, 'IoU', iou)
         print_evaluate(mc, 'Precision', precision)
         print_evaluate(mc, 'Recall', recall)
-        print('--------------------------------------------------------------------')
-
+        print()
 
 
 if __name__ == '__main__':
@@ -195,9 +193,12 @@ if __name__ == '__main__':
 
     for epoch in range(args.start_epoch, args.epochs):
         scheduler.step()
+        print('-------------------------------------------------------------------')
         train(model, train_dataloader, criterion, optimizer, epoch)
         test(mc, model, val_dataloader, epoch)
         save_checkpoint(args.model_path, epoch, model)
+        print('-------------------------------------------------------------------')
+        print()
 
     # export scalar data to JSON for external processing
     writer.export_scalars_to_json("./all_scalars.json")
